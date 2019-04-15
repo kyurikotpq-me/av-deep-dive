@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Audio Deep Dive</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            overflow-x: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #app {
+            width: 100vw;
+            padding: 1rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .audio-player {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        .audio-thumbnail {
+            width: 400px;
+            height: 400px;
+            margin-bottom: 1.5rem;
+            background-size: contain;
+            background-position: center;
+        }
+
+        .breathing {
+            animation: breathe 2s infinite;
+        }
+
+        @keyframes breathe {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .audio-next,
+        .audio-previous {
+            flex: 0 0 30px;
+            width: 30px;
+            height: 30px;
+        }
+
+        .audio-play {
+            flex: 0 0 40px;
+            margin: 0 10px;
+            width: 40px;
+            height: 40px;
+        }
+
+        .audio-next,
+        .audio-play,
+        .audio-previous {
+            padding: .5rem;
+            border-radius: 50%;
+            background-color: #e2e2e2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .audio-next::after,
+        .audio-play::after,
+        .audio-previous::before {
+            content: '';
+            display: block;
+            border-top: 7px solid transparent;
+            border-bottom: 7px solid transparent;
+            border-right: 0;
+            border-left: 10px solid #dc3545;
+
+            width: 0;
+            height: 0;
+        }
+
+        .audio-next::before,
+        .audio-previous::after {
+            content: '';
+            width: 5px;
+            height: 11px;
+            background-color: #dc3545;
+            transform: translate(-1px, 0);
+        }
+
+        .audio-play::after {
+            transform: scale(1.2) translate(1px, 0);
+        }
+
+        .audio-play.pauseIcon::after,
+        .audio-play.pauseIcon::before {
+            content: '';
+            width: 5px;
+            height: 15px;
+            background-color: #dc3545;
+            margin: 0 2px;
+
+            border: 0;
+            transform: none;
+        }
+
+        .audio-next::before {
+            transform: translate(1px, 0);
+        }
+
+        .audio-next::after {
+            transform: scale(0.8) translate(3px, 0);
+        }
+
+        .audio-previous::before {
+            transform: scale(-0.8) translate(3px, 0);
+        }
+
+        .audio-controls {
+            margin: 10px 0;
+            width: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Seeker bar */
+        .audio-seeker-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .audio-seeker {
+            width: 80%;
+            margin: 0 10px;
+            background-color: #e2e2e2;
+        }
+
+        .audio-seeker .audio-progress {
+            width: 0%;
+            height: 5px;
+            background-color: #dc3545;
+            display: flex;
+            align-items: center;
+        }
+
+        .audio-seeker .audio-progress::after {
+            content: '';
+            display: block;
+            border-radius: 50%;
+            width: 10px;
+            height: 10px;
+            background-color: #000;
+            margin-left: auto;
+            margin-right: -4px;
+        }
+
+        /* In the playlist */
+        .song-item {
+            padding: 0 1rem;
+            cursor: pointer;
+            border: 2px solid #e2e2e2;
+        }
+        .song-item.active {
+            border: 2px solid #dc3545;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <!-- Custom audio player -->
+        <audio-player :songs="songs" :key="1"></audio-player>
+    </div>
+    <script id="audio-player" type="text/x-template">
+        <div class="audio-player">
+            <audio :src="songSrc" @canplay="canPlayHandle" 
+            @timeupdate="updateCT" @error="showError" 
+            ref="audio"></audio>
+
+            <!-- Thumbnail -->
+            <div class="audio-thumbnail" :style="thumbnailStyle" :class="{ breathing: isPlaying }"></div>
+
+            <!-- Progress bar -->
+            <div class="audio-seeker-container">
+                <span class="timePassed">{{ currentTimeDisplay }}</span>
+                <div class="audio-seeker" @click="skip" >
+                    <div class="audio-progress" :style="progress"></div>
+                </div>
+                <span class="timeLeft">{{ timeLeft }}</span>
+            </div>
+            
+            <!-- Controls -->
+            <div class="audio-controls">
+                <div class="audio-previous" @click="previous"></div>
+                <div class="audio-play" :class="pauseIcon" @click="togglePlay"></div>
+                <div class="audio-next" @click="next"></div>
+            </div>
+
+            <!-- Playlist -->
+            <div class="playlist">
+                <div class="song-item" v-for="(song, index) in songs" @click="playSongFromList(index)"
+                :class="{ active: index == currentSongIndex }"
+                >
+                    <h4>{{ song.name }} // {{ song.duration }} </h4>
+                </div>
+            </div>
+        </div>
+    </script>
+    <script src="js/jquery-3.3.1.js"></script>
+    <script src="js/vue.min.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Video Deep Dive</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            font-family: "Segoe UI", sans-serif;
+            overflow-x: hidden;
+        }
+
+        #app {
+            width: 900px;
+        }
+
+        video {
+            width: 100%;
+        }
+
+        .video-item {
+            padding: 0 .5rem;
+            cursor: pointer;
+            border: 2px solid #e2e2e2;
+            transition: all 1s;
+        }
+
+        .video-item.active {
+            border: 2px solid #dc3545;
+        }
+
+        .video-seeker-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .video-seeker {
+            width: 80%;
+            margin: 0 10px;
+            background-color: pink;
+            cursor: pointer;
+        }
+
+        .video-seeker .progress {
+            width: 0%;
+            height: 7px;
+            background-color: #dc3545;
+        }
+
+        .video-play-controls {
+            display: flex;
+            justify-content: center;
+            margin: 1rem;
+        }
+
+        .play-button,
+        .previous-button,
+        .next-button {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            padding: .5rem;
+            background-color: pink;
+            margin: 0 10px;
+
+            cursor: pointer;
+        }
+
+        .previous-button::before,
+        .previous-button::after,
+        .next-button::after,
+        .next-button::before,
+        .play-button::before,
+        .play-button::after {
+            content: '';
+            display: block;
+            
+            width: 0;
+            height: 0;
+        }
+
+        .previous-button::after,
+        .next-button::before,
+        .play-button::after {
+            border-color: transparent transparent transparent #dc3545;
+            border-width: 7px 0 7px 10px;
+            border-style: solid;
+        }
+
+        .play-button.pause::before,
+        .play-button.pause::after {
+            width: 5px;
+            height: 14px;
+            margin: 0 2px;
+            background-color: #dc3545;
+            border: none;
+            transform: none;
+        }
+
+        .previous-button::after {
+            transform: scaleX(-1);
+        }
+        .previous-button::before {
+            width: 5px;
+            height: 14px;
+            background-color: #dc3545;
+        }
+
+
+        .next-button::after {
+            width: 5px;
+            height: 14px;
+            background-color: #dc3545;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <video-player :videos="videos"></video-player>
+    </div>
+    <script id="video-player" type="text/x-template">
+        <div class="video-player">
+            <video :src="videoSrc" @timeupdate="updateCT"
+            @canplay="canPlayHandle" @error="errorHandle"
+             ref="video" controlsList="nodownload"></video>
+            <div class="video-controls">
+                <div class="video-seeker-container">
+                    <span>{{ currentTimeDisplay }}</span>
+                    <div class="video-seeker" @click="skip">
+                    <div class="progress" :style="progress"></div>
+                    </div>
+                    <span>{{ timeLeftDisplay }}</span>
+                </div>
+                <div class="video-play-controls">
+                    <div class="previous-button" @click="prev"></div>
+                    <div :class="{ pause: isPlaying, 'play-button': true }" 
+                        @click="togglePlay"
+                    ></div>
+                    <div class="next-button" @click="next"></div>
+                </div>
+            </div>
+
+            <div class="video-playlist">
+                <div :class="{ 'video-item': true, active: i == currentVideoIndex }" v-for="(v, i) in videos" @click="changeVideo(i)">
+                <h4>{{ videoTitle(v) }}</h4>
+                </div>
+            </div>
+        </div>
+
+    </script>
+    <script src="js/jquery-3.3.1.js"></script>
+    <script src="js/vue.min.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>
